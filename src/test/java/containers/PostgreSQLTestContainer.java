@@ -8,10 +8,11 @@ import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PostgreSQLTestContainer extends PostgreSQLContainer<PostgreSQLTestContainer> {
+public class PostgreSQLTestContainer extends GenericContainer<PostgreSQLTestContainer> {
     private static final Map<String, GenericContainer<?>> INITIALIZED = new ConcurrentHashMap<>();
 
     public static final String SERVICE_NAME = "POSTGRESQL_CONTAINER";
@@ -27,7 +28,7 @@ public class PostgreSQLTestContainer extends PostgreSQLContainer<PostgreSQLTestC
         bootPostgresDBPortfolioSchema();
     }
 
-    public static PostgreSQLContainer bootPostgresDBPortfolioSchema() {
+    public static PostgreSQLTestContainer bootPostgresDBPortfolioSchema() {
         return LazyPostgresDBPortfolioSchemaLoader.INSTANCE;
     }
 
@@ -58,11 +59,11 @@ public class PostgreSQLTestContainer extends PostgreSQLContainer<PostgreSQLTestC
         this.withNetwork(network);
         this.withCreateContainerCmdModifier(cmd -> cmd.withName(SERVICE_NAME));
         this.withCopyFileToContainer(MountableFile.forClasspathResource(scriptName), "/docker-entrypoint-initdb.d/init_postgresql.sql");
-        this.withEnv("POSTGRES_USER", postgresUser);
+//        this.withEnv("POSTGRES_USER", postgresUser);
         this.withEnv("POSTGRES_PASSWORD", postgresPassword);
-        this.withEnv("POSTGRES_DB", postgresDb);
+//        this.withEnv("POSTGRES_DB", postgresDb);
         this.waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*", 2)
+                Wait.forLogMessage(".*database system is ready to accept connections.*", 2).withStartupTimeout(Duration.ofMinutes(2))
         );
     }
 }
