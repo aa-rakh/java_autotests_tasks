@@ -1,19 +1,14 @@
 package containers;
 
-import org.testcontainers.containers.ContainerLaunchException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class PostgreSQLTestContainer extends GenericContainer<PostgreSQLTestContainer> {
-    private static final Map<String, GenericContainer<?>> INITIALIZED = new ConcurrentHashMap<>();
 
     public static final String SERVICE_NAME = "POSTGRESQL_CONTAINER";
     public final int postgresPort = 5432;
@@ -25,31 +20,12 @@ public class PostgreSQLTestContainer extends GenericContainer<PostgreSQLTestCont
     }
 
     public static void runPostgreSQLContainer() {
-        bootPostgresDBPortfolioSchema();
+        ContainersLoader.bootPostgresDBPortfolioSchema();
     }
 
-    public static PostgreSQLTestContainer bootPostgresDBPortfolioSchema() {
-        return LazyPostgresDBPortfolioSchemaLoader.INSTANCE;
-    }
+    public String getConnectionList() {
+        return this.getHost() + ":" + postgresPort;
 
-    private static class LazyPostgresDBPortfolioSchemaLoader {
-        private static final PostgreSQLTestContainer INSTANCE;
-
-        static {
-            INSTANCE = new PostgreSQLTestContainer(
-                    Network.newNetwork(),
-                    "test_user",
-                    "qwerty",
-                    "test_db",
-                    "init_postgresql.sql");
-            try {
-                INSTANCE.start();
-            } catch (Exception exception) {
-                System.out.println(INSTANCE.getLogs());
-                throw new ContainerLaunchException(exception.getCause().toString());
-            }
-            INITIALIZED.put(INSTANCE.getContainerName(), INSTANCE);
-        }
     }
 
     public PostgreSQLTestContainer(Network network, String postgresUser, String postgresPassword, String postgresDb, String scriptName) {
@@ -59,11 +35,9 @@ public class PostgreSQLTestContainer extends GenericContainer<PostgreSQLTestCont
         this.withNetwork(network);
         this.withCreateContainerCmdModifier(cmd -> cmd.withName(SERVICE_NAME));
         this.withCopyFileToContainer(MountableFile.forClasspathResource(scriptName), "/docker-entrypoint-initdb.d/init_postgresql.sql");
-//        this.withEnv("POSTGRES_USER", postgresUser);
         this.withEnv("POSTGRES_PASSWORD", postgresPassword);
-//        this.withEnv("POSTGRES_DB", postgresDb);
         this.waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*", 2).withStartupTimeout(Duration.ofMinutes(2))
+                Wait.forLogMessage(".*database system is ready to accept connections.*", 2).withStartupTimeout(Duration.ofMinutes(1))
         );
     }
 }

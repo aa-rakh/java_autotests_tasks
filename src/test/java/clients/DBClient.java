@@ -3,23 +3,32 @@ package clients;
 import containers.ContainersLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jooq.*;
+import org.jooq.Record;
+import org.jooq.conf.ParamType;
+import org.jooq.impl.DSL;
+import org.jooq.Result;
+import org.postgresql.Driver;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DBClient {
     private static final Logger logger = LogManager.getLogger(DBClient.class);
-    private final String dbName = "test_db";
     private final String user = "test_user";
     private final String password = "qwerty";
-    private String url = null;
     private Connection connection;
+    public static Connection dbConnection;
 
-    public Connection openDBConnection() throws SQLException {
-        url = String.format("jdbc:postgresql://%s:5432/%s", ContainersLoader.bootPostgresDB().getHost(), dbName);
-        connection = DriverManager.getConnection(url, user, password);
-        logger.info("Подключение к PostgreSQL создано");
-
+    public Connection openDBConnection() {
+        try {
+            DriverManager.registerDriver(new Driver());
+            connection = DriverManager.getConnection(ContainersLoader.getPostgreSQLConnectionList(), user, password);
+            logger.info("Подключение к PostgreSQL создано");
+        } catch (SQLException e) {
+            logger.error("Ошибка подключения: " + e.getMessage());
+        }
         return connection;
     }
 
@@ -27,12 +36,25 @@ public class DBClient {
         try {
             connection.close();
         } catch (Exception exception) {
-            System.out.println("При запуске тестов не выполнялось подключение к БД");
-            System.out.println(exception);
+            logger.info("При запуске тестов не выполнялось подключение к БД");
+            logger.info(exception);
         }
 
-        System.out.println("Соединение с PostgreSQL успешно закрыто");
+        logger.info("Соединение с PostgreSQL успешно закрыто");
     }
 
+    public static Result<Record> insertIntoTable(Table table, Record record) {
+        DSLContext create = DSL.using(dbConnection, SQLDialect.POSTGRES);
 
+        String sql = create
+                .insertInto(table)
+                .set(record)
+                .getSQL(ParamType.INLINED);
+
+        logger.info("Запрос: " + sql);
+        Result<Record> result = create.fetch(sql);
+        logger.info("\n" + result);
+
+        return result;
+    }
 }
